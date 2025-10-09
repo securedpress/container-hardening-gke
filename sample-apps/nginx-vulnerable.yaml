@@ -1,0 +1,261 @@
+# sample-apps/nginx-vulnerable.yaml
+# ⚠️ INTENTIONALLY VULNERABLE - FOR EDUCATIONAL PURPOSES ONLY
+# This deployment contains multiple security vulnerabilities for demonstration
+# DO NOT use this configuration in production!
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-vulnerable-config
+data:
+  nginx.conf: |
+    user root;  # VULNERABILITY 1: Running as root user
+    worker_processes 1;
+    
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        # VULNERABILITY 2: Server tokens enabled (version disclosure)
+        server_tokens on;
+        
+        # VULNERABILITY 3: Directory listing enabled
+        autoindex on;
+        
+        server {
+            listen 80;
+            server_name _;
+            
+            # VULNERABILITY 4: No security headers
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+            }
+            
+            # VULNERABILITY 5: Exposed server-status endpoint
+            location /server-status {
+                stub_status on;
+                access_log off;
+            }
+            
+            # VULNERABILITY 6: No rate limiting (DDoS vulnerable)
+        }
+    }
+  
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Vulnerable NGINX Demo</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                margin: 40px;
+                background: #f44336;
+                color: white;
+            }
+            .warning { 
+                background: #fff3cd; 
+                color: #856404;
+                padding: 20px; 
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            .vulnerability {
+                background: #d32f2f;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 5px;
+            }
+            h1 { color: white; }
+            ul { line-height: 2; }
+        </style>
+    </head>
+    <body>
+        <h1>⚠️ Intentionally Vulnerable NGINX Application</h1>
+        
+        <div class="warning">
+            <strong>WARNING:</strong> This application contains intentional security vulnerabilities 
+            for educational purposes. Do NOT expose this to the internet!
+        </div>
+        
+        <h2>Security Issues in This Deployment:</h2>
+        
+        <div class="vulnerability">
+            <h3>1. Running as Root User</h3>
+            <p>Container runs as root (UID 0) - major security risk!</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>2. No Security Context</h3>
+            <p>Missing securityContext, no privilege dropping</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>3. Privileged Container</h3>
+            <p>Running with privileged: true - full host access!</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>4. No Resource Limits</h3>
+            <p>Can consume unlimited CPU/memory (DoS risk)</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>5. Outdated Image</h3>
+            <p>Using old NGINX version with known CVEs</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>6. Latest Tag</h3>
+            <p>Using :latest tag instead of specific version</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>7. Server Version Exposed</h3>
+            <p>NGINX version visible in headers (info disclosure)</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>8. Directory Listing Enabled</h3>
+            <p>Can browse all files in directories</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>9. No Network Policies</h3>
+            <p>No network segmentation or traffic restrictions</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>10. Secrets in Plain Text</h3>
+            <p>Sensitive data stored as regular ConfigMap</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>11. No Health Checks</h3>
+            <p>Missing liveness/readiness probes</p>
+        </div>
+        
+        <div class="vulnerability">
+            <h3>12. Exposed Management Endpoints</h3>
+            <p>Access /server-status for NGINX metrics (should be restricted)</p>
+        </div>
+        
+        <h2>Test the Vulnerabilities:</h2>
+        <ul>
+            <li>Check server version: <code>curl -I http://&lt;IP&gt;</code></li>
+            <li>View server status: <code>http://&lt;IP&gt;/server-status</code></li>
+            <li>Check if running as root: <code>kubectl exec &lt;pod&gt; -- whoami</code></li>
+            <li>View capabilities: <code>kubectl exec &lt;pod&gt; -- capsh --print</code></li>
+        </ul>
+        
+        <p><strong>Learning Objective:</strong> Understand common Kubernetes security misconfigurations 
+        and learn how to fix them!</p>
+    </body>
+    </html>
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-vulnerable
+  labels:
+    app: nginx-vulnerable
+    security: vulnerable
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-vulnerable
+  template:
+    metadata:
+      labels:
+        app: nginx-vulnerable
+        security: vulnerable
+    spec:
+      # VULNERABILITY 7: No securityContext at pod level
+      
+      containers:
+      - name: nginx
+        # VULNERABILITY 8: Using 'latest' tag (non-deterministic)
+        # VULNERABILITY 9: Using old version with known CVEs
+        image: nginx:1.14  # Old version from 2018 with known vulnerabilities
+        
+        ports:
+        - containerPort: 80
+        
+        # VULNERABILITY 10: Running as root, privileged mode
+        securityContext:
+          privileged: true  # DANGER: Full host access!
+          runAsUser: 0      # DANGER: Running as root!
+          runAsNonRoot: false
+          allowPrivilegeEscalation: true
+          capabilities:
+            add:
+              - ALL  # DANGER: All Linux capabilities!
+        
+        # VULNERABILITY 11: No resource limits (DoS risk)
+        # resources: (intentionally commented out)
+        
+        # VULNERABILITY 12: No health checks
+        # livenessProbe: (intentionally missing)
+        # readinessProbe: (intentionally missing)
+        
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: nginx-config
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+        
+        env:
+        # VULNERABILITY 13: Hardcoded credentials in plain text
+        - name: ADMIN_PASSWORD
+          value: "admin123"  # DANGER: Never do this!
+        - name: API_KEY
+          value: "sk_test_51234567890"  # DANGER: Exposed secret!
+        - name: DATABASE_URL
+          value: "mysql://root:password@db:3306/mydb"  # DANGER!
+      
+      # VULNERABILITY 14: hostNetwork allows access to host networking
+      hostNetwork: false  # Even false is risky without proper policies
+      
+      # VULNERABILITY 15: No Pod Security Policy/Standards
+      
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-vulnerable-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-vulnerable
+  labels:
+    app: nginx-vulnerable
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+  selector:
+    app: nginx-vulnerable
+
+---
+# VULNERABILITY 16: Storing sensitive data in ConfigMap instead of Secret
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fake-secrets
+data:
+  db-password: "SuperSecret123"  # DANGER: Plain text in ConfigMap!
+  api-token: "ghp_xxxxxxxxxxxxxxxxxxxx"
+  private-key: |
+    -----BEGIN RSA PRIVATE KEY-----
+    This would be a real private key - never store like this!
+    -----END RSA PRIVATE KEY-----

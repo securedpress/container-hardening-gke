@@ -1,0 +1,17 @@
+# Author: Jose Perez
+# Company: SecuredPress LLC
+# Created: December 2024
+# License: MIT
+#
+# Copy this file to terraform.tfvars and fill in your own values
+
+project_id   = "YOUR-GCP-PROJECT-ID"
+cluster_name = "security-demo-cluster"
+region       = "us-central1"
+zone         = "us-central1-a"
+
+# Single node configuration for minimal cost
+node_count   = 1
+min_nodes    = 1
+max_nodes    = 3
+machine_type = "e2-small"  # ~$12-15/month for single node

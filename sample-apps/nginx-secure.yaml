@@ -1,0 +1,306 @@
+# sample-apps/nginx-secure.yaml
+# ✅ PROPERLY SECURED - This is how you SHOULD configure Kubernetes deployments
+# Compare this with nginx-vulnerable.yaml to see the differences
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-secure-config
+data:
+  nginx.conf: |
+    # ✅ Running as non-root user (nginx user)
+    user nginx;
+    worker_processes auto;
+    
+    events {
+        worker_connections 1024;
+    }
+    
+    http {
+        # ✅ Hide NGINX version
+        server_tokens off;
+        
+        # ✅ Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Content-Security-Policy "default-src 'self' 'unsafe-inline'" always;
+        
+        # ✅ Rate limiting
+        limit_req_zone $binary_remote_addr zone=general:10m rate=10r/s;
+        limit_req_status 429;
+        
+        server {
+            listen 8080;  # ✅ Non-privileged port
+            server_name _;
+            
+            # ✅ Directory listing disabled
+            autoindex off;
+            
+            # ✅ Apply rate limiting
+            limit_req zone=general burst=20 nodelay;
+            
+            location / {
+                root /usr/share/nginx/html;
+                index index.html;
+            }
+            
+            # ✅ Management endpoints removed/secured
+            # No exposed /server-status
+        }
+    }
+  
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Secure NGINX Demo</title>
+        <style>
+            body { 
+                font-family: Arial, sans-serif; 
+                margin: 40px;
+                background: #4CAF50;
+                color: white;
+            }
+            .success { 
+                background: #d4edda; 
+                color: #155724;
+                padding: 20px; 
+                border-radius: 5px;
+                margin: 20px 0;
+            }
+            .security-feature {
+                background: #2e7d32;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 5px;
+            }
+            h1 { color: white; }
+            ul { line-height: 2; }
+            code { background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 3px; }
+        </style>
+    </head>
+    <body>
+        <h1>✅ Properly Secured NGINX Application</h1>
+        
+        <div class="success">
+            <strong>SUCCESS:</strong> This application follows Kubernetes security best practices!
+        </div>
+        
+        <h2>Security Features Implemented:</h2>
+        
+        <div class="security-feature">
+            <h3>✅ 1. Non-Root User</h3>
+            <p>Running as UID 101 (nginx user), not root</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 2. Security Context</h3>
+            <p>Proper securityContext with dropped capabilities</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 3. No Privileged Mode</h3>
+            <p>privileged: false, read-only root filesystem</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 4. Resource Limits</h3>
+            <p>CPU and memory limits prevent DoS attacks</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 5. Specific Image Version</h3>
+            <p>Using pinned version tag, not :latest</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 6. Updated Image</h3>
+            <p>Using current NGINX version with security patches</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 7. Version Hidden</h3>
+            <p>server_tokens off - no version disclosure</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 8. Security Headers</h3>
+            <p>X-Frame-Options, CSP, XSS protection enabled</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 9. Rate Limiting</h3>
+            <p>Protection against DDoS attacks</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 10. Secrets Management</h3>
+            <p>Using Kubernetes Secrets, not ConfigMaps</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 11. Health Checks</h3>
+            <p>Liveness and readiness probes configured</p>
+        </div>
+        
+        <div class="security-feature">
+            <h3>✅ 12. No Exposed Management</h3>
+            <p>No public server-status or debug endpoints</p>
+        </div>
+        
+        <h2>Verify Security:</h2>
+        <ul>
+            <li>Check headers: <code>curl -I http://&lt;IP&gt;</code> (no version shown)</li>
+            <li>Verify non-root: <code>kubectl exec &lt;pod&gt; -- whoami</code> (nginx, not root)</li>
+            <li>Check security context: <code>kubectl describe pod &lt;pod&gt;</code></li>
+            <li>Verify rate limiting: Rapid requests return 429</li>
+        </ul>
+        
+        <p><strong>Best Practice:</strong> Always follow the principle of least privilege!</p>
+    </body>
+    </html>
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-secure
+  labels:
+    app: nginx-secure
+    security: hardened
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-secure
+  template:
+    metadata:
+      labels:
+        app: nginx-secure
+        security: hardened
+    spec:
+      # ✅ Pod-level security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101  # nginx user
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      
+      containers:
+      - name: nginx
+        # ✅ Using specific, current version
+        image: nginx:1.27.2-alpine  # Current stable version
+        
+        ports:
+        - containerPort: 8080  # ✅ Non-privileged port
+        
+        # ✅ Container-level security context
+        securityContext:
+          privileged: false
+          runAsNonRoot: true
+          runAsUser: 101
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL  # ✅ Drop all capabilities
+            add:
+              - NET_BIND_SERVICE  # Only if needed
+        
+        # ✅ Resource limits (prevents resource exhaustion)
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        
+        # ✅ Liveness probe
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # ✅ Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+        - name: nginx-config
+          mountPath: /usr/share/nginx/html/index.html
+          subPath: index.html
+          readOnly: true
+        - name: cache
+          mountPath: /var/cache/nginx
+        - name: run
+          mountPath: /var/run
+        
+        # ✅ Using secrets, not environment variables
+        envFrom:
+        - secretRef:
+            name: app-secrets
+            optional: true
+      
+      # ✅ No host network access
+      hostNetwork: false
+      hostPID: false
+      hostIPC: false
+      
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-secure-config
+      # ✅ Writable volumes for cache and run (since root is read-only)
+      - name: cache
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-secure
+  labels:
+    app: nginx-secure
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080  # ✅ Non-privileged port in container
+    protocol: TCP
+  selector:
+    app: nginx-secure
+
+---
+# ✅ Using Secret for sensitive data (not ConfigMap)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+type: Opaque
+data:
+  # These are base64 encoded (still visible, but better than ConfigMap)
+  # In production, use external secret management (Vault, GCP Secret Manager, etc.)
+  db-password: U3VwZXJTZWNyZXQxMjM=  # base64: SuperSecret123
+stringData:
+  # stringData allows non-encoded values
+  api-token: "use-external-secrets-in-production"

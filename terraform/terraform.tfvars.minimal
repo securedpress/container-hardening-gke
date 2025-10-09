@@ -1,0 +1,28 @@
+# Author: Jose Perez
+# Company: SecuredPress LLC
+# Created: December 2024
+# License: MIT
+#
+# Ultra-minimal single-node configuration for lowest possible cost
+# Copy this to terraform.tfvars for the cheapest option (~$12-15/month)
+
+project_id   = "YOUR-GCP-PROJECT-ID"
+cluster_name = "demo-cluster"
+region       = "us-central1"
+zone         = "us-central1-a"
+
+# MINIMAL COST CONFIGURATION
+node_count   = 1           # Single node only
+min_nodes    = 1           # Never scale below 1
+max_nodes    = 1           # Disable autoscaling (stay at 1 node)
+machine_type = "e2-small"  # Smallest practical size
+
+# NOTE: This configuration:
+# - Runs on a SINGLE node (~$12-15/month)
+# - Perfect for learning and testing
+# - Can run small applications
+# - Sample apps will work but with fewer replicas
+# 
+# If you need more power, change to:
+# - machine_type = "e2-medium" (more memory)
+# - max_nodes = 3 (allow scaling)
