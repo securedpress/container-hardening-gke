@@ -1,4 +1,6 @@
-# GKE Basic Kubernetes Cluster Setup for Security Demo
+# GKE Security Demo
+
+# Basic Kubernetes Cluster Setup
 
 > Created by SecuredPress LLC | Jose Perez
 > AI and CyberSecurity Training
