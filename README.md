@@ -1,4 +1,4 @@
-# GKE Security Demo
+# Container Hardening on GKE
 
 # Basic Kubernetes Cluster Setup
 
